@@ -962,8 +962,30 @@
 
         <div class="balance-card">
             <div class="balance-row">
+                <span class="balance-label">初始余额</span>
+                <span class="balance-value" style="color: #3b82f6;"><input type="number" id="initialBalance" value="61.2" step="0.1" style="font-size: 1.5rem; font-weight: bold; width: 70px; text-align: right; border: none; background: transparent; color: #3b82f6;"> 小时</span>
+            </div>
+            <div class="balance-row">
                 <span class="balance-label">当前休息时长余额</span>
                 <span class="balance-value positive" id="balance">61.2 小时</span>
+            </div>
+        </div>
+
+        <div class="stats-card">
+            <div class="stats-title">📊 本月统计</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="overtimeCount">0</div>
+                    <div class="stat-label">加班天数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="restCount">0</div>
+                    <div class="stat-label">休息天数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="monthChange">+0</div>
+                    <div class="stat-label">本月变动(小时)</div>
+                </div>
             </div>
         </div>
 
@@ -977,6 +999,9 @@
                 <div class="setting-item">
                     <label>休息花费:</label>
                     <input type="number" id="defaultRest" value="8" step="0.5" min="0"> 小时
+                </div>
+                <div class="setting-item">
+                    <button onclick="clearAllData()" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">🗑️ 一键清空</button>
                 </div>
             </div>
         </div>
@@ -1010,24 +1035,6 @@
             </div>
             <p class="click-hint">💡 点击日期切换状态 · 悬停出现✏️可自定义时长</p>
         </div>
-
-        <div class="stats-card">
-            <div class="stats-title">📊 本月统计</div>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value" id="overtimeCount">0</div>
-                    <div class="stat-label">加班天数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="restCount">0</div>
-                    <div class="stat-label">休息天数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="monthChange">+0</div>
-                    <div class="stat-label">本月变动(小时)</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- 弹窗 -->
@@ -1055,8 +1062,8 @@
     </div>
 
     <script>
-        // 初始余额
-        const INITIAL_BALANCE = 61.2;
+        // 初始余额（可自定义）
+        let initialBalance = 61.2;
 
         // 日历数据结构: { day: { type: 0/1/2, hours: null/number } }
         // type: 0=普通, 1=加班, 2=休息
@@ -1117,10 +1124,12 @@
             }
 
             const data = dailyWeatherData[day];
+            const minTempDisplay = data.minTemp === '--' ? '--' : `${data.minTemp}°`;
+            const maxTempDisplay = data.maxTemp === '--' ? '--' : `${data.maxTemp}°`;
             return {
                 hasData: true,
                 icon: data.icon,
-                tempRange: `${data.minTemp}°/${data.maxTemp}°`,
+                tempRange: `${minTempDisplay}/${maxTempDisplay}`,
                 maxTemp: data.maxTemp,
                 minTemp: data.minTemp,
                 desc: data.desc,
@@ -1146,7 +1155,7 @@
 
         // 计算余额
         function calculateBalance() {
-            let balance = INITIAL_BALANCE;
+            let balance = initialBalance;
             let overtimeDays = 0;
             let restDays = 0;
             let monthChange = 0;
@@ -1194,7 +1203,7 @@
 
         // 更新单元格显示
         function updateCellDisplay(day) {
-            const cell = document.querySelector(`[data-day="${day}"]`);
+            const cell = document.querySelector(`#calendar [data-day="${day}"]`);
             if (!cell) return;
 
             const data = dayData[day];
@@ -1455,13 +1464,13 @@
                         ${weatherInfo.hasData ? `
                             <div class="weather-tooltip-header">
                                 <span class="weather-tooltip-icon">${weatherInfo.icon}</span>
-                                <span class="weather-tooltip-temp">${weatherInfo.maxTemp}°</span>
+                                <span class="weather-tooltip-temp">${weatherInfo.maxTemp === '--' ? '--' : weatherInfo.maxTemp + '°'}</span>
                                 <span class="weather-tooltip-desc">${weatherInfo.desc}</span>
                             </div>
                             <div class="weather-tooltip-details">
                                 <div class="weather-tooltip-detail">
                                     <span class="weather-tooltip-detail-icon">🌡️</span>
-                                    <span class="weather-tooltip-detail-value">${weatherInfo.minTemp}° ~ ${weatherInfo.maxTemp}°</span>
+                                    <span class="weather-tooltip-detail-value">${weatherInfo.tempRange}</span>
                                 </div>
                                 <div class="weather-tooltip-detail">
                                     <span class="weather-tooltip-detail-icon">💧</span>
@@ -1513,7 +1522,8 @@
             const data = {
                 dayData: dayData,
                 defaultOvertime: getDefaultOvertime(),
-                defaultRest: getDefaultRest()
+                defaultRest: getDefaultRest(),
+                initialBalance: initialBalance
             };
             localStorage.setItem('calendar202604v2', JSON.stringify(data));
         }
@@ -1530,12 +1540,36 @@
                 if (data.defaultRest) {
                     document.getElementById('defaultRest').value = data.defaultRest;
                 }
+                if (data.initialBalance) {
+                    initialBalance = data.initialBalance;
+                    document.getElementById('initialBalance').value = initialBalance;
+                }
             }
         }
 
         // 监听默认值变化
         document.getElementById('defaultOvertime').addEventListener('input', updateDisplay);
         document.getElementById('defaultRest').addEventListener('input', updateDisplay);
+
+        // 监听初始余额变化
+        document.getElementById('initialBalance').addEventListener('input', function() {
+            initialBalance = parseFloat(this.value) || 0;
+            updateDisplay();
+        });
+
+        // 一键清空所有数据
+        function clearAllData() {
+            if (confirm('确定要清空所有加班和休息记录吗？')) {
+                // 清空dayData
+                for (let key in dayData) {
+                    delete dayData[key];
+                }
+                // 重新生成日历
+                generateCalendar();
+                // 更新显示
+                updateDisplay();
+            }
+        }
 
         // 点击弹窗外部关闭
         document.getElementById('modal').addEventListener('click', function(e) {
@@ -1893,8 +1927,8 @@
 
                     dailyWeatherData[dayNum] = {
                         icon: getWeatherIcon(daily.weather_code[i]),
-                        maxTemp: Math.round(daily.temperature_2m_max[i]),
-                        minTemp: Math.round(daily.temperature_2m_min[i]),
+                        maxTemp: daily.temperature_2m_max[i] < -100 || daily.temperature_2m_max[i] > 60 ? '--' : Math.round(daily.temperature_2m_max[i]),
+                        minTemp: daily.temperature_2m_min[i] < -100 || daily.temperature_2m_min[i] > 60 ? '--' : Math.round(daily.temperature_2m_min[i]),
                         desc: getWeatherDesc(daily.weather_code[i]),
                         precip: daily.precipitation_sum[i].toFixed(1),
                         uv: Math.round(daily.uv_index_max[i]),
@@ -1936,8 +1970,8 @@
                             <div class="timeline-date">${monthNum}/${dayNum} ${dayOfWeek}</div>
                             <div class="timeline-icon">${wData.icon}</div>
                             <div class="timeline-temp">
-                                <span class="timeline-temp-high">${wData.maxTemp}°</span>
-                                <span class="timeline-temp-low">${wData.minTemp}°</span>
+                                <span class="timeline-temp-high">${wData.maxTemp === '--' ? '--' : wData.maxTemp + '°'}</span>
+                                <span class="timeline-temp-low">${wData.minTemp === '--' ? '--' : wData.minTemp + '°'}</span>
                             </div>
                         </div>
                     `;
@@ -1993,8 +2027,6 @@
                 el.classList.remove('active');
                 if (parseInt(el.dataset.day) === day) {
                     el.classList.add('active');
-                    // 滚动到选中项
-                    el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                 }
             });
 
@@ -2032,13 +2064,13 @@
                 <div class="selected-day-content">
                     <div class="selected-day-main">
                         <span class="selected-day-icon">${wData.icon}</span>
-                        <span class="selected-day-temp">${wData.maxTemp}°</span>
+                        <span class="selected-day-temp">${wData.maxTemp === '--' ? '--' : wData.maxTemp + '°'}</span>
                         <span class="selected-day-desc">${wData.desc}</span>
                     </div>
                     <div class="selected-day-details">
                         <div class="selected-day-detail">
                             <span class="selected-day-detail-icon">🌡️</span>
-                            <span class="selected-day-detail-value">${wData.minTemp}° ~ ${wData.maxTemp}°</span>
+                            <span class="selected-day-detail-value">${wData.minTemp === '--' ? '--' : wData.minTemp + '°'} ~ ${wData.maxTemp === '--' ? '--' : wData.maxTemp + '°'}</span>
                         </div>
                         <div class="selected-day-detail">
                             <span class="selected-day-detail-icon">💧</span>
